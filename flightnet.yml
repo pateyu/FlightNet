@@ -1,0 +1,19 @@
+name: flightnet
+channels:
+  - pytorch
+  - nvidia
+  - pyg
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pytorch
+  - torchvision
+  - torchaudio
+  - pytorch-geometric
+  - pandas
+  - numpy
+  - scikit-learn
+  - xgboost
+  - streamlit
+  - pyvis
+  - notebook
