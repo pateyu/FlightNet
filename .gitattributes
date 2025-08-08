@@ -1,3 +1,5 @@
 data/flights_2024_06.csv filter=lfs diff=lfs merge=lfs -text
 data/flights_2024_07.csv filter=lfs diff=lfs merge=lfs -text
 data/flights_2024_08.csv filter=lfs diff=lfs merge=lfs -text
+data/hourly_weather_summer_2024.csv filter=lfs diff=lfs merge=lfs -text
+data/processed_flight_data.parquet filter=lfs diff=lfs merge=lfs -text
