@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlightNet Dashboard</title>
+
+    <!-- Streamlit uses Source Sans Pro, but Inter is close enough and cleaner -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="text/javascript" src="https://unpkg.com/globe.gl"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Config -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"Source Sans Pro"', 'sans-serif'] },
+                    colors: {
+                        st: {
+                            bg: '#0e1117',
+                            sidebar: '#262730',
+                            text: '#fafafa',
+                            primary: '#ff4b4b', /* Streamlit Red/Pink */
+                            secondaryBg: '#262730', /* card bg */
+                            border: 'rgba(250, 250, 250, 0.2)'
+                        }
+                    },
+                    animation: { 'fade-in': 'fadeIn 0.2s ease-out' },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(5px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Source Sans Pro', sans-serif;
+        }
+
+        /* Custom scrollbar matching Streamlit */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(250, 250, 250, 0.2);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(250, 250, 250, 0.3);
+        }
+
+        /* HTMX Loading States */
+        .htmx-indicator {
+            display: none;
+        }
+
+        .htmx-request .htmx-indicator {
+            display: inline-flex;
+        }
+
+        .htmx-request.htmx-indicator {
+            display: inline-flex;
+        }
+
+        .vis-network:focus {
+            outline: none;
+        }
+
+        /* Range slider styling to match Streamlit */
+        input[type=range] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #ff4b4b;
+            cursor: pointer;
+            margin-top: -6px;
+            box-shadow: 0 0 0 2px #0e1117;
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: rgba(250, 250, 250, 0.2);
+            border-radius: 2px;
+        }
+    </style>
+</head>
+
+<body
+    class="bg-st-bg text-st-text h-screen overflow-hidden flex flex-col md:flex-row selection:bg-st-primary selection:text-white">
+
+    <!-- Sidebar Controls -->
+    <aside
+        class="w-full md:w-[336px] bg-st-sidebar flex flex-col h-auto md:h-full overflow-y-auto shrink-0 transition-all duration-300 relative z-20 border-b md:border-b-0 md:border-r border-st-border">
+        <div class="p-4 md:p-6 pb-2">
+            <h2 class="text-[1.5rem] md:text-[1.75rem] font-bold tracking-tight mb-2 md:mb-6 flex items-center gap-2">
+                <i data-lucide="sliders-horizontal" class="w-6 h-6 text-st-primary"></i>
+                Controls
+            </h2>
+        </div>
+
+        <form id="control-form" class="px-6 space-y-6 flex-1">
+            <div class="space-y-1">
+                <label for="date" class="block text-[14px] font-normal text-st-text/80 mb-2">Select Date</label>
+                <div class="relative">
+                    <input type="date" id="date" name="date" value="2024-07-15"
+                        class="w-full bg-st-bg border border-st-border rounded-[0.5rem] px-3 py-2 text-[15px] font-normal text-st-text focus:outline-none focus:border-st-primary focus:ring-1 focus:ring-st-primary transition-shadow">
+                </div>
+            </div>
+
+            <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                    <label for="hour" class="block text-[14px] font-normal text-st-text/80">Select Hour (UTC)</label>
+                    <span class="text-[14px] text-st-text" id="hour-display">12</span>
+                </div>
+                <!-- Streamlit uses a red slider thumb -->
+                <input type="range" id="hour" name="hour" min="0" max="23" value="12" class="w-full accent-st-primary"
+                    oninput="document.getElementById('hour-display').innerText = this.value">
+            </div>
+
+            <div class="pt-4 border-t border-st-border">
+                <h3 class="text-[14px] font-semibold text-st-text mb-4 uppercase tracking-wider text-st-text/70">
+                    Simulation Parameters</h3>
+
+                <div class="space-y-1 mb-4">
+                    <label for="weather_scenario" class="block text-[14px] font-normal text-st-text/80 mb-2">Weather
+                        Scenario</label>
+                    <div class="relative">
+                        <select id="weather_scenario" name="weather_scenario"
+                            class="w-full bg-st-bg border border-st-border rounded-[0.5rem] px-3 py-2 text-[15px] font-normal text-st-text focus:outline-none focus:border-st-primary focus:ring-1 focus:ring-st-primary cursor-pointer appearance-none">
+                            <option value="none">Clear Skies (Nominal)</option>
+                            <option value="east_coast_storm">Severe East Coast Storm</option>
+                            <option value="west_coast_fog">West Coast Marine Layer</option>
+                            <option value="midwest_snow">Midwest Winter Blizzard</option>
+                        </select>
+                        <div
+                            class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 flex items-center px-1 text-st-text/50">
+                            ▼
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label for="traffic_multiplier" class="block text-[14px] font-normal text-st-text/80">Network
+                            Traffic Volume</label>
+                        <span class="text-[14px] text-st-text" id="traffic-display">1.0x</span>
+                    </div>
+                    <input type="range" id="traffic_multiplier" name="traffic_multiplier" min="0.5" max="2.0" step="0.1"
+                        value="1.0" class="w-full accent-st-primary"
+                        oninput="document.getElementById('traffic-display').innerText = parseFloat(this.value).toFixed(1) + 'x'">
+                </div>
+            </div>
+
+            <div class="pt-2">
+                <button type="button"
+                    class="w-full bg-st-sidebar border border-st-border hover:border-st-primary hover:text-st-primary text-[15px] text-st-text font-normal py-[0.5rem] px-4 rounded-[0.5rem] transition-colors flex justify-center items-center gap-2"
+                    hx-get="/graph" hx-include="#control-form" hx-target="#network-graph" hx-indicator="#graph-spinner">
+                    Run Prediction
+                </button>
+            </div>
+        </form>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 overflow-y-auto relative z-10 p-4 md:px-[5%] md:py-[3rem] 2xl:px-[15%]">
+        <div class="max-w-[1200px] mx-auto w-full">
+
+            <header class="mb-4">
+                <h1
+                    class="text-[1.75rem] md:text-[2.25rem] font-bold tracking-tight leading-tight mb-2 flex items-center gap-3">
+                    <i data-lucide="plane-takeoff" class="w-8 h-8 md:w-10 md:h-10 text-st-primary"></i>
+                    FlightNet: GNN Predictor
+                </h1>
+                <p class="text-[15px] md:text-[16px] text-st-text/90 font-normal leading-relaxed">
+                    This dashboard visualizes the airport network and predicts future delays using a Graph Attention
+                    Network (GAT).
+                </p>
+            </header>
+
+            <div class="flex flex-col xl:flex-row gap-6 md:gap-[3rem] mt-6 md:mt-8">
+
+                <!-- Left: Graph Visualization -->
+                <section class="flex-[2] flex flex-col gap-2 min-h-[400px]">
+                    <div class="flex items-center justify-between">
+                        <h2
+                            class="text-[1.25rem] md:text-[1.5rem] font-semibold tracking-tight flex items-center gap-2">
+                            <i data-lucide="globe-2" class="w-5 h-5 text-st-text/70"></i>
+                            Network Geography
+                        </h2>
+
+                        <div id="graph-spinner" class="htmx-indicator items-center gap-2 text-[14px] text-st-text/70">
+                            <i data-lucide="loader-2" class="w-4 h-4 animate-spin text-st-primary"></i>
+                            <span class="animate-pulse">Loading...</span>
+                        </div>
+                    </div>
+
+                    <div id="network-graph"
+                        class="w-full h-[400px] md:h-[615px] bg-st-bg rounded-[0.5rem] border border-st-border"
+                        hx-get="/graph" hx-include="#control-form" hx-trigger="load">
+                        <div class="w-full h-full flex items-center justify-center">
+                            <span class="text-[15px] text-st-text/50 italic">*(Globe visualization will load
+                                here)*</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Right: Predictions -->
+                <section class="flex-[1] flex flex-col gap-2 min-w-0 xl:min-w-[320px]">
+                    <h2 class="text-[1.25rem] md:text-[1.5rem] font-semibold tracking-tight flex items-center gap-2">
+                        <i data-lucide="activity" class="w-5 h-5 text-st-text/70"></i>
+                        Prediction Explorer
+                    </h2>
+
+                    <div class="mb-6">
+                        <label for="airport" class="block text-[14px] font-normal text-st-text/80 mb-2">Select Airport
+                            to Inspect</label>
+                        <select id="airport" name="airport" form="control-form"
+                            class="w-full bg-st-bg border border-st-border rounded-[0.5rem] px-3 py-2 text-[15px] font-normal text-st-text focus:outline-none focus:border-st-primary focus:ring-1 focus:ring-st-primary cursor-pointer appearance-none"
+                            hx-get="/predict" hx-include="#control-form" hx-target="#prediction-results"
+                            hx-trigger="change, load">
+                            {% for pt in airports %}
+                            <option value="{{ pt }}" {% if pt=='JFK' %}selected{% endif %}>{{ pt }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Prediction Results target area -->
+                    <div id="prediction-results" class="relative">
+                        <div class="flex items-center text-[15px] text-st-text/50 italic h-[200px]">
+                            Running models...
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Re-initialize icons after HTMX swaps complete (since HTMX injects new HTML strings)
+        document.body.addEventListener('htmx:afterSwap', function (evt) {
+            lucide.createIcons();
+        });
+    </script>
+</body>
+
+</html>

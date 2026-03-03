@@ -15,7 +15,7 @@ The goal of this project is to build a Graph Attention Network (GAT) to model an
 - **XGBoost** for baseline comparison
 - **Pandas** for data manipulation
 - **Meteostat** for weather data collection
-- **Streamlit** for the interactive dashboard
+- **FastAPI & HTMX** for the interactive, snappy dashboard
 
 ## Results
 The GAT model was trained on a dataset of hourly graph snapshots from Summer 2024. It was benchmarked against a strong XGBoost baseline model that used the same features but lacked the graph's structural information.
@@ -37,22 +37,16 @@ The results demonstrate that the GAT's ability to model network relationships pr
     git clone [https://github.com/your-username/FlightNet.git](https://github.com/your-username/FlightNet.git)
     cd FlightNet
     ```
-2.  **Create and activate the Conda environment:**
+3.  **Install dependencies and sync environment:**
     ```bash
-    mamba env create -f environment.yml
-    mamba activate flightnet
-    ```
-3.  **Install any additional packages (if needed):**
-    This step is a fallback for any packages that had issues installing via the `.yml` file.
-    ```bash
-    pip install torch_geometric
+    uv sync
     ```
 4.  **Run the training script:**
     This script will run the full data pipeline (loading from cache if available), train both the GAT and XGBoost models, and save the trained models.
     ```bash
-    python train.py
+    uv run python train.py
     ```
 5.  **Launch the dashboard:**
     ```bash
-    streamlit run dashboard.py
+    uv run uvicorn app:app --reload
     ```
